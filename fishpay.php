@@ -4,26 +4,10 @@ use WHMCS\Database\Capsule;
 
 function fishpay_config() {
     return [
-        "FriendlyName" => [
-            "Type" => "System",
-            "Value" => "FishPay"
-        ],
-        "api_key" => [
-            "FriendlyName" => "API Key",
-            "Type" => "text",
-            "Size" => "100"
-        ],
-        "merchant_id" => [
-            "FriendlyName" => "Merchant ID",
-            "Type" => "text",
-            "Size" => "100"
-        ],
-        "gateway_url" => [
-            "FriendlyName" => "Gateway Base URL",
-            "Type" => "text",
-            "Size" => "100",
-            "Default" => "https://pay.zoomov.xyz"
-        ]
+        "FriendlyName" => ["Type" => "System", "Value" => "FishPay"],
+        "api_key" => ["FriendlyName" => "API Key", "Type" => "text"],
+        "merchant_id" => ["FriendlyName" => "Merchant ID", "Type" => "text"],
+        "gateway_url" => ["FriendlyName" => "Gateway Base URL", "Type" => "text", "Default" => "https://pay.zoomov.xyz"]
     ];
 }
 
@@ -33,11 +17,12 @@ function fishpay_link($params) {
     $baseUrl = rtrim($params['gateway_url'], '/');
 
     $rubAmount = floatval($params['amount']);
-    $amount = round($rubAmount * 0.5, 2); // Convert RUB → UAH
-    $userId = $params['clientdetails']['userid'];
-    $invoiceId = $params['invoiceid'];
-    $paymentMethod = $params['paymentmethod'];
+    $amount = round($rubAmount * 0.5, 2); // RUB → UAH
 
+    $invoiceId = $params['invoiceid'];
+    $userId = $params['clientdetails']['userid'];
+
+    // Step 1: Generate the payment
     $postData = json_encode([
         "amount" => $amount,
         "user_id" => $userId
@@ -57,31 +42,68 @@ function fishpay_link($params) {
 
     $data = json_decode($response, true);
 
-    // Check if valid
     if (!isset($data['paymentPageUrl']) || !isset($data['transactionId'])) {
-        return '
-            <div style="padding: 20px; background: #1e1e1e; border: 1px solid #444; color: #ff4d4f; border-radius: 6px; font-family: monospace;">
-                <strong>❌ FishPay error:</strong><br>
-                Invalid response from API<br><br>
-                <strong>📦 Raw response:</strong><br>
-                <div style="background: #2a2a2a; color: #ccc; padding: 10px; border-radius: 4px;">
-                    ' . htmlspecialchars($response) . '
-                </div>
-            </div>';
+        logTransaction("FishPay", "❌ Invalid generate-payment response:\n" . $response, "Error");
+        return "<div style='padding: 20px; color: red;'>❌ FishPay error: could not generate payment</div>";
     }
 
     $transactionId = $data['transactionId'];
     $paymentUrl = $data['paymentPageUrl'];
 
-    // Log the transaction as pending
-    logTransaction("FishPay", "Invoice ID: $invoiceId\nTransaction ID: $transactionId\nStatus: Waiting for payment", "Pending");
+    // Log TX for background checker
+    logTransaction("FishPay", "Invoice ID: $invoiceId\nTransaction ID: $transactionId\nStatus: Created", "Pending");
 
-    // Return HTML that redirects to payment page
-    return '
-        <meta http-equiv="refresh" content="0; url=' . htmlspecialchars($paymentUrl) . '">
-        <div style="padding: 20px; background: #1e1e1e; border: 1px solid #444; color: #00ffcc; border-radius: 6px; font-family: monospace;">
-            <strong>💳 Redirecting you to FishPay...</strong><br>
-            If you are not redirected, <a href="' . htmlspecialchars($paymentUrl) . '">click here</a>.
+    // Step 2: Redirect with pretty UI
+    return <<<HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Redirecting to FishPay...</title>
+    <meta http-equiv="refresh" content="0; url={$paymentUrl}">
+    <style>
+        body {
+            background-color: #111;
+            color: #ccc;
+            font-family: "Segoe UI", sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        .box {
+            background-color: #1a1a1a;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            max-width: 400px;
+        }
+        .title {
+            font-size: 22px;
+            margin-bottom: 10px;
+            color: #00ffcc;
+        }
+        .desc {
+            font-size: 15px;
+            margin-top: 10px;
+            color: #999;
+        }
+        a {
+            color: #00bfff;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <div class="title">🔁 Redirecting to FishPay...</div>
+        <div class="desc">
+            If you are not redirected automatically,<br>
+            <a href="{$paymentUrl}">click here to continue</a>.
         </div>
-    ';
+    </div>
+</body>
+</html>
+HTML;
 }
