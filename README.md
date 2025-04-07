@@ -2,7 +2,7 @@
 
 ## How to install
 
-Fistly, download the fishpay.php file
+Fistly, download the `fishpay.php` file
 After you've downloaded it, you have to put it into
 ```
 /var/www/whmcs/modules/gateways/
