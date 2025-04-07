@@ -52,58 +52,39 @@ function fishpay_link($params) {
 
     // Log TX for background checker
     logTransaction("FishPay", "Invoice ID: $invoiceId\nTransaction ID: $transactionId\nStatus: Created", "Pending");
-
-    // Step 2: Redirect with pretty UI
-    return <<<HTML
+    
+return <<<HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Redirecting to FishPay...</title>
+    <title>Redirecting...</title>
     <meta http-equiv="refresh" content="0; url={$paymentUrl}">
     <style>
         body {
-            background-color: #111;
-            color: #ccc;
-            font-family: "Segoe UI", sans-serif;
+            background-color: #f9f9f9;
+            color: #000;
+            font-family: sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            text-align: center;
         }
-        .box {
-            background-color: #1a1a1a;
-            padding: 30px 40px;
-            border-radius: 12px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.5);
-            max-width: 400px;
-        }
-        .title {
-            font-size: 22px;
-            margin-bottom: 10px;
-            color: #00ffcc;
-        }
-        .desc {
-            font-size: 15px;
-            margin-top: 10px;
-            color: #999;
-        }
-        a {
-            color: #00bfff;
+        .button {
+            background-color: #007bff;
+            color: #fff;
+            padding: 14px 26px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
             text-decoration: none;
         }
     </style>
 </head>
 <body>
-    <div class="box">
-        <div class="title">🔁 Redirecting to FishPay...</div>
-        <div class="desc">
-            If you are not redirected automatically,<br>
-            <a href="{$paymentUrl}">click here to continue</a>.
-        </div>
-    </div>
+    <a class="button" href="{$paymentUrl}">Redirecting to FishPay...</a>
 </body>
 </html>
 HTML;
-}
+
